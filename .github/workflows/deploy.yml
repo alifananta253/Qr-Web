@@ -1,0 +1,58 @@
+
+name: QR WEB ALIF
+
+on:
+  # Menjalankan workflow saat ada push ke branch utama (main atau master)
+  push:
+    branches: ["main", "master"]
+
+  # Memungkinkan Anda menjalankan workflow ini secara manual dari tab Actions
+  workflow_dispatch:
+
+# Memberikan izin kepada GITHUB_TOKEN untuk proses deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Konfigurasi untuk memastikan hanya satu deployment berjalan pada satu waktu
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable' # Anda bisa ganti ke channel Flutter yang Anda gunakan
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Flutter Web
+        # Penting: --base-href disetel sesuai dengan nama repositori Anda
+        # Ini agar aplikasi dapat menemukan file-filenya dengan benar di GitHub Pages
+        run: flutter build web --release --base-href /${{ github.event.repository.name }}/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Mengunggah direktori hasil build
+          path: ./build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
